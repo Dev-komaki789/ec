@@ -1,0 +1,111 @@
+# EC サイト（WMS 連携）
+
+WMS（[komaki-wms](https://github.com/Dev-komaki789/wms)）と連携する EC サイト。
+業務系（PC + ハンディ）の WMS に対して、顧客向け SPA を **マイクロサービス的に分離** して構築する。
+
+**開発状況**: 設計確定（2026-06-03）、実装はこれから。
+
+---
+
+## 全体構成
+
+```
+┌────────────────┐       ┌────────────────────┐       ┌──────────────────┐
+│ EC Frontend    │       │ EC Backend         │       │ WMS              │
+│ React +        │       │ Django + DRF       │       │ Django + DRF     │
+│ TypeScript     │ ◀──▶ │ - 商品プロキシ      │ ◀──▶ │ - 商品マスタ      │
+│ + Vite         │       │ - 価格マスタ        │       │ - 在庫           │
+│ (frontend/)    │       │ - カート / 注文     │       │ - 入出庫         │
+│                │       │ (backend/)          │       │                  │
+└────────────────┘       └────────────────────┘       └──────────────────┘
+                              ↓                              ↓
+                          EC DB                          WMS DB
+                          (PostgreSQL "ec")              (PostgreSQL "wms")
+```
+
+## リポジトリ構成（monorepo）
+
+```
+ec/
+├── backend/          ← Django + DRF プロジェクト（実装予定）
+├── frontend/         ← React + TypeScript プロジェクト（実装予定）
+├── docs/             ← EC 固有の設計資料（実装と並行して書く）
+└── README.md         ← 本ファイル
+```
+
+## 関連リポジトリ
+
+- **WMS（連携先・API 提供者）**: <https://github.com/Dev-komaki789/wms>
+  - 本 EC サイトは WMS が提供する HTTP API を消費する
+
+## 設計ドキュメント（共通）
+
+API 仕様と設計引き継ぎ資料は **WMS リポジトリの `integration/` 配下** に集約している（真実のソース）。
+本 EC サイトの実装中はこれらを参照しながら進める:
+
+- **設計引き継ぎ**: <https://github.com/Dev-komaki789/wms/blob/master/integration/HANDOVER_EC.md>
+- **API 仕様（ドラフト）**: <https://github.com/Dev-komaki789/wms/blob/master/integration/api_spec.md>
+- **API 仕様（動く版）**: `https://komaki-wms.com/api/schema/swagger-ui/`（WMS 実装後に公開予定、drf-spectacular で自動生成）
+
+ローカル開発時は隣接ディレクトリ `../wms/integration/` から参照できる:
+```
+/home/maini/projects/
+├── wms/
+│   └── integration/    ← API 仕様・HANDOVER
+└── ec/                 ← 本リポジトリ
+```
+
+## 主要な設計判断（要約）
+
+| 項目 | 採用方針 |
+| --- | --- |
+| 構成 | 案 Y（マイクロサービス的、EC バックエンド別） |
+| DB | 同 RDS 内に `ec` データベース新規作成、論理分離 |
+| マスタ管理 | B パターン（EC 側に商品マスタのコピー、日次バッチ同期） |
+| 在庫表示 | 段階 1（都度 API 問い合わせ、Redis 未採用、`get_stock()` 関数抽象化） |
+| 価格カラム | EC 側 DB に持つ（WMS には追加しない） |
+| 認証 | サービス間は API キー、顧客は JWT or Session |
+| Customer マスタ | EC 顧客は WMS に同期しない（個人情報リスク回避） |
+| 商品画像 | EC 側に保持、本番は AWS S3 |
+
+詳細は WMS リポジトリの `integration/HANDOVER_EC.md` を参照。
+
+## スコープ（最小 MVP 8 機能）
+
+1. 商品一覧（カテゴリ別）
+2. 商品詳細
+3. カート
+4. 注文確定（→ WMS の OutboundOrder 作成）
+5. 顧客登録 / ログイン
+6. 注文履歴
+7. 商品検索
+8. 在庫数表示（WMS の StockBalance を API 経由で取得）
+
+決済はモック、配送追跡・レビュー・お気に入りはスコープ外。
+
+## 開発開始時のタスク
+
+1. Django プロジェクト初期化（`backend/`）
+2. Vite で React + TypeScript プロジェクト初期化（`frontend/`）
+3. `ec` データベース作成（既存 AWS RDS インスタンス内）
+4. EC 用モデル定義（`ec_products` / `ec_skus` / `ec_price_lists` / `ec_customers` / `ec_carts` / `ec_orders`）
+5. WMS → EC の同期コマンド `sync_skus_from_wms` の最小版実装
+6. 商品一覧 API（`GET /api/ec/products/`）
+7. React で商品一覧画面
+
+並行して WMS 側で必要な作業:
+
+- DRF + drf-spectacular 導入
+- `api/` 新規アプリ作成
+- シリアライザ / ViewSet 実装
+- API キー認証
+- Swagger UI 公開
+
+## 環境想定
+
+- Python（Django backend）: 3.12
+- Node.js（React frontend）: 22.x LTS
+- 依存管理: backend は `uv`、frontend は `pnpm`
+- DB: PostgreSQL（同 AWS RDS インスタンス内の `ec` データベース）
+
+詳細は実装段階で確定。

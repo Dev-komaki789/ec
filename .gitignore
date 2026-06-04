@@ -1,0 +1,10 @@
+# OS / エディタ
+.DS_Store
+Thumbs.db
+*.swp
+
+# Claude Code のローカル設定（個人・マシン固有。共有しない）
+.claude/settings.local.json
+
+# backend / frontend の生成物・秘密情報は各ディレクトリの .gitignore で除外している
+# （backend/.gitignore: .venv, .env, staticfiles, media など / frontend/.gitignore: node_modules, dist, .env）

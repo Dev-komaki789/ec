@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment variables (secrets)
+.env
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+*.log
+# collectstatic の集約先（生成物。本番サーバで都度生成する）
+staticfiles/
+# アップロード画像（フェーズ1: ローカル media/。本番は S3 へ）
+media/
+
+# ruff cache
+.ruff_cache/
