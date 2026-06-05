@@ -24,6 +24,15 @@ export interface Product {
   skus: Sku[]
 }
 
+export interface Category {
+  id: number
+  category_code: string
+  category_name: string
+  parent_id: number | null
+  is_leaf: boolean
+  sort_order: number
+}
+
 // DRF PageNumberPagination のレスポンス形。
 export interface Paginated<T> {
   count: number

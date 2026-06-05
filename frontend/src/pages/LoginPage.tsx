@@ -10,7 +10,8 @@ export function LoginPage() {
   if (user) return <Navigate to="/" replace />
 
   return (
-    <div className="auth-page">
+    <div className="mx-auto max-w-md py-8">
+      <h1 className="mb-6 text-center text-xl font-bold text-slate-900">アカウント</h1>
       <AccountPanel onDone={() => navigate('/')} />
     </div>
   )

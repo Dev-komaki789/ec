@@ -1,142 +1,99 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ApiError } from '../api/http'
-import { createOrder } from '../api/orders'
-import { useAuth } from '../auth/AuthContext'
+import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../cart/CartContext'
+import { btnOutline, btnPrimary, card } from '../components/ui'
 import { formatYen } from '../utils/format'
 
 export function CartPage() {
-  const { user } = useAuth()
-  const { cart, update, remove, refresh } = useCart()
+  const { cart, update, remove } = useCart()
   const navigate = useNavigate()
-
-  const [note, setNote] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleCheckout() {
-    setSubmitting(true)
-    setError(null)
-    try {
-      const order = await createOrder({ note })
-      await refresh() // サーバ側でカートが空になったので取り直す
-      navigate(`/orders/${order.id}`)
-    } catch (e) {
-      if (e instanceof ApiError) {
-        // 在庫不足(409)・配送先不備(400)・WMS障害(503) などはメッセージをそのまま出す。
-        setError(e.message)
-      } else {
-        setError('注文に失敗しました')
-      }
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="cart-page">
-        <h1>カート</h1>
-        <p className="page-status">カートは空です。</p>
+      <div className="mx-auto max-w-xl py-16 text-center">
+        <h1 className="text-xl font-bold text-slate-900">カート</h1>
+        <p className="mt-4 text-slate-500">カートは空です。</p>
+        <Link to="/" className={`${btnPrimary} mt-6`}>
+          商品を見る
+        </Link>
       </div>
     )
   }
 
-  const addressMissing = !user?.address
-
   return (
-    <div className="cart-page">
-      <h1>カート</h1>
-
-      <table className="cart-table">
-        <thead>
-          <tr>
-            <th>商品</th>
-            <th>単価</th>
-            <th>数量</th>
-            <th>小計</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+      <div>
+        <h1 className="mb-6 text-xl font-bold text-slate-900">カート</h1>
+        <ul className="space-y-3">
           {cart.items.map((item) => {
             const variant = [item.size_info, item.color_info].filter(Boolean).join(' / ')
             return (
-              <tr key={item.id}>
-                <td>
-                  <div className="cart-table__name">{item.product_name}</div>
-                  <div className="cart-table__variant">
-                    {variant || item.sku_code}
-                  </div>
-                </td>
-                <td>{item.unit_price != null ? formatYen(item.unit_price) : '—'}</td>
-                <td>
-                  <div className="qty-stepper">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        item.quantity > 1
-                          ? update(item.id, item.quantity - 1)
-                          : remove(item.id)
-                      }
-                    >
-                      −
-                    </button>
-                    <span>{item.quantity}</span>
-                    <button type="button" onClick={() => update(item.id, item.quantity + 1)}>
-                      ＋
-                    </button>
-                  </div>
-                </td>
-                <td>{item.line_total != null ? formatYen(item.line_total) : '—'}</td>
-                <td>
+              <li key={item.id} className={`${card} flex items-center gap-4 p-4`}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-slate-800">{item.product_name}</p>
+                  <p className="text-xs text-slate-500">{variant || item.sku_code}</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {item.unit_price != null ? formatYen(item.unit_price) : '—'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="cart-table__remove"
-                    onClick={() => remove(item.id)}
+                    onClick={() =>
+                      item.quantity > 1 ? update(item.id, item.quantity - 1) : remove(item.id)
+                    }
+                    className="h-8 w-8 rounded-md border border-slate-300 text-lg leading-none hover:bg-slate-50"
                   >
-                    削除
+                    −
                   </button>
-                </td>
-              </tr>
+                  <span className="w-8 text-center font-medium">{item.quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => update(item.id, item.quantity + 1)}
+                    className="h-8 w-8 rounded-md border border-slate-300 text-lg leading-none hover:bg-slate-50"
+                  >
+                    ＋
+                  </button>
+                </div>
+
+                <div className="w-24 text-right font-semibold text-slate-800">
+                  {item.line_total != null ? formatYen(item.line_total) : '—'}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => remove(item.id)}
+                  className="text-sm text-slate-400 transition hover:text-rose-600"
+                  aria-label="削除"
+                >
+                  削除
+                </button>
+              </li>
             )
           })}
-        </tbody>
-      </table>
-
-      <div className="cart-total">
-        合計（税込）: <strong>{formatYen(cart.total_amount)}</strong>
+        </ul>
       </div>
 
-      <section className="checkout">
-        <h2>お届け先</h2>
-        {addressMissing ? (
-          <p className="checkout__warn">
-            プロフィールに住所が未登録です。注文には住所が必要です。
-          </p>
-        ) : (
-          <p className="checkout__delivery">
-            {user?.full_name}（{user?.postal_code}）{user?.address}
-          </p>
-        )}
-
-        <label className="checkout__note">
-          備考（任意）
-          <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
-        </label>
-
-        {error && <p className="checkout__error">{error}</p>}
-
-        <button
-          type="button"
-          className="checkout__submit"
-          disabled={submitting || addressMissing}
-          onClick={handleCheckout}
-        >
-          {submitting ? '注文処理中…' : '注文を確定する'}
-        </button>
-      </section>
+      {/* 注文サマリ */}
+      <aside className="lg:sticky lg:top-20 lg:self-start">
+        <div className={`${card} p-5`}>
+          <h2 className="text-sm font-semibold text-slate-700">注文サマリ</h2>
+          <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+            <span>商品点数</span>
+            <span>{cart.total_quantity} 点</span>
+          </div>
+          <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-3">
+            <span className="text-slate-600">合計（税込）</span>
+            <span className="text-xl font-bold text-slate-900">{formatYen(cart.total_amount)}</span>
+          </div>
+          <button type="button" onClick={() => navigate('/checkout')} className={`${btnPrimary} mt-5 w-full`}>
+            レジに進む
+          </button>
+          <Link to="/" className={`${btnOutline} mt-2 w-full`}>
+            買い物を続ける
+          </Link>
+        </div>
+      </aside>
     </div>
   )
 }

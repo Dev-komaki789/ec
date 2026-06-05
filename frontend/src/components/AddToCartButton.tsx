@@ -2,9 +2,20 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useCart } from '../cart/CartContext'
+import { btnPrimary } from './ui'
 
 // 「カートに入れる」ボタン。未ログインならログイン画面へ誘導する。
-export function AddToCartButton({ skuCode }: { skuCode: string }) {
+export function AddToCartButton({
+  skuCode,
+  quantity = 1,
+  block = false,
+  disabled = false,
+}: {
+  skuCode: string
+  quantity?: number
+  block?: boolean
+  disabled?: boolean
+}) {
   const { user } = useAuth()
   const { add } = useCart()
   const navigate = useNavigate()
@@ -18,9 +29,8 @@ export function AddToCartButton({ skuCode }: { skuCode: string }) {
     }
     setAdding(true)
     try {
-      await add(skuCode, 1)
+      await add(skuCode, quantity)
       setAdded(true)
-      // 「追加しました」を一瞬出して戻す。
       window.setTimeout(() => setAdded(false), 1500)
     } finally {
       setAdding(false)
@@ -28,8 +38,13 @@ export function AddToCartButton({ skuCode }: { skuCode: string }) {
   }
 
   return (
-    <button type="button" className="add-to-cart-btn" onClick={handleClick} disabled={adding}>
-      {added ? '追加しました' : 'カートに入れる'}
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={adding || disabled}
+      className={`${btnPrimary} ${block ? 'w-full' : ''}`}
+    >
+      {added ? '✓ 追加しました' : adding ? '追加中…' : 'カートに入れる'}
     </button>
   )
 }

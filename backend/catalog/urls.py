@@ -9,12 +9,13 @@ router が自動で:
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import EcProductViewSet, StockView
+from .views import CategoryListView, EcProductViewSet, StockView
 
 router = DefaultRouter()
 router.register('products', EcProductViewSet, basename='ecproduct')
 
 urlpatterns = [
+    path('categories/', CategoryListView.as_view(), name='ec-categories'),
     path('stock/', StockView.as_view(), name='ec-stock'),
     *router.urls,
 ]

@@ -6,12 +6,24 @@ ReadOnlyModelViewSet なので一覧（GET /api/ec/products/）と
 """
 
 from rest_framework import status, viewsets
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import EcProduct, EcSku
-from .serializers import EcProductSerializer
+from .models import EcCategory, EcProduct, EcSku
+from .serializers import EcCategorySerializer, EcProductSerializer
 from .wms_client import StockNotFound, WmsUnavailable, get_stock
+
+
+class CategoryListView(ListAPIView):
+    """カテゴリ一覧（有効なもの全件）。frontend がツリーを組み立てて絞り込みに使う。
+
+    GET /api/ec/categories/
+    """
+
+    queryset = EcCategory.objects.filter(is_active=True).order_by('sort_order', 'category_code')
+    serializer_class = EcCategorySerializer
+    pagination_class = None  # カテゴリは少数なので全件返す
 
 
 class EcProductViewSet(viewsets.ReadOnlyModelViewSet):
@@ -35,9 +47,15 @@ class EcProductViewSet(viewsets.ReadOnlyModelViewSet):
             .order_by('product_code')
         )
 
+        # カテゴリ絞り込み: 指定カテゴリ「とその子孫」に属する商品を返す。
+        # （商品は末端カテゴリに付くので、親カテゴリを選んだら配下すべてを見せたい）
         category_code = self.request.query_params.get('category')
         if category_code:
-            qs = qs.filter(category__category_code=category_code)
+            root = EcCategory.objects.filter(category_code=category_code).first()
+            if root is None:
+                qs = qs.none()
+            else:
+                qs = qs.filter(category_id__in=self._descendant_ids(root.id))
 
         search = self.request.query_params.get('search')
         if search:
@@ -46,6 +64,20 @@ class EcProductViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(Q(product_name__icontains=search) | Q(product_code__icontains=search))
 
         return qs
+
+    @staticmethod
+    def _descendant_ids(root_id):
+        """root_id とその全子孫カテゴリの id を返す（メモリ上で木を辿る）。"""
+        rows = EcCategory.objects.values_list('id', 'parent_id')
+        children = {}
+        for cid, pid in rows:
+            children.setdefault(pid, []).append(cid)
+        result, stack = [], [root_id]
+        while stack:
+            cid = stack.pop()
+            result.append(cid)
+            stack.extend(children.get(cid, []))
+        return result
 
 
 class StockView(APIView):

@@ -7,7 +7,17 @@ WMS には問い合わせない＝高速（HANDOVER §6, B パターン）。
 
 from rest_framework import serializers
 
-from .models import EcProduct, EcSku
+from .models import EcCategory, EcProduct, EcSku
+
+
+class EcCategorySerializer(serializers.ModelSerializer):
+    """カテゴリ（ツリーは frontend が parent_id から組み立てる）。"""
+
+    parent_id = serializers.IntegerField(allow_null=True, read_only=True)
+
+    class Meta:
+        model = EcCategory
+        fields = ['id', 'category_code', 'category_name', 'parent_id', 'is_leaf', 'sort_order']
 
 
 class EcSkuSerializer(serializers.ModelSerializer):
