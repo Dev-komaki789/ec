@@ -22,59 +22,62 @@ export function CartPage() {
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
       <div>
-        <h1 className="mb-6 text-xl font-bold text-slate-900">カート</h1>
+        <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900">カート</h1>
         <ul className="space-y-3">
           {cart.items.map((item) => {
             const variant = [item.size_info, item.color_info].filter(Boolean).join(' / ')
             return (
-              <li key={item.id} className={`${card} flex items-center gap-4 p-4`}>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-slate-800">{item.product_name}</p>
-                  <p className="text-xs text-slate-500">{variant || item.sku_code}</p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {item.unit_price != null ? formatYen(item.unit_price) : '—'}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
+              <li key={item.id} className={`${card} p-4`}>
+                {/* 上段: 商品名・バリエーション・単価 ＋ 削除 */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold break-words text-slate-800">{item.product_name}</p>
+                    <p className="text-xs text-slate-500">{variant || item.sku_code}</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {item.unit_price != null ? formatYen(item.unit_price) : '—'}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() =>
-                      item.quantity > 1 ? update(item.id, item.quantity - 1) : remove(item.id)
-                    }
-                    className="h-8 w-8 rounded-md border border-slate-300 text-lg leading-none hover:bg-slate-50"
+                    onClick={() => remove(item.id)}
+                    className="shrink-0 text-xs text-slate-400 transition hover:text-rose-600"
                   >
-                    −
-                  </button>
-                  <span className="w-8 text-center font-medium">{item.quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => update(item.id, item.quantity + 1)}
-                    className="h-8 w-8 rounded-md border border-slate-300 text-lg leading-none hover:bg-slate-50"
-                  >
-                    ＋
+                    削除
                   </button>
                 </div>
 
-                <div className="w-24 text-right font-semibold text-slate-800">
-                  {item.line_total != null ? formatYen(item.line_total) : '—'}
+                {/* 下段: 数量ステッパー（左） ＋ 小計（右） */}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        item.quantity > 1 ? update(item.id, item.quantity - 1) : remove(item.id)
+                      }
+                      className="h-9 w-9 rounded-md border border-slate-300 text-lg leading-none hover:bg-slate-50"
+                    >
+                      −
+                    </button>
+                    <span className="w-8 text-center font-medium">{item.quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => update(item.id, item.quantity + 1)}
+                      className="h-9 w-9 rounded-md border border-slate-300 text-lg leading-none hover:bg-slate-50"
+                    >
+                      ＋
+                    </button>
+                  </div>
+                  <span className="font-semibold text-slate-800">
+                    {item.line_total != null ? formatYen(item.line_total) : '—'}
+                  </span>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => remove(item.id)}
-                  className="text-sm text-slate-400 transition hover:text-rose-600"
-                  aria-label="削除"
-                >
-                  削除
-                </button>
               </li>
             )
           })}
         </ul>
       </div>
 
-      {/* 注文サマリ */}
+      {/* 注文サマリ（PC は右に固定、スマホは下に積む） */}
       <aside className="lg:sticky lg:top-20 lg:self-start">
         <div className={`${card} p-5`}>
           <h2 className="text-sm font-semibold text-slate-700">注文サマリ</h2>
@@ -86,7 +89,11 @@ export function CartPage() {
             <span className="text-slate-600">合計（税込）</span>
             <span className="text-xl font-bold text-slate-900">{formatYen(cart.total_amount)}</span>
           </div>
-          <button type="button" onClick={() => navigate('/checkout')} className={`${btnPrimary} mt-5 w-full`}>
+          <button
+            type="button"
+            onClick={() => navigate('/checkout')}
+            className={`${btnPrimary} mt-5 w-full`}
+          >
             レジに進む
           </button>
           <Link to="/" className={`${btnOutline} mt-2 w-full`}>

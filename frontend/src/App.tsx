@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
+import { BottomNav } from './components/BottomNav'
 import { Footer } from './components/Footer'
 import { Header } from './components/Header'
 import { RequireAuth } from './components/RequireAuth'
@@ -21,7 +22,8 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    // 下部に余白(pb-16)を入れてスマホのボトムナビとコンテンツが重ならないようにする。
+    <div className="flex min-h-screen flex-col pb-16 md:pb-0">
       <Header />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         <Routes>
@@ -71,6 +73,7 @@ function App() {
         </Routes>
       </main>
       <Footer />
+      <BottomNav />
     </div>
   )
 }
