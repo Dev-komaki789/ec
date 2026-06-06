@@ -1,12 +1,12 @@
 """seed_images/categories/ のカテゴリ画像を、配下商品の画像に一括設定する。
 
-ルートカテゴリごとに 1 枚の代表画像を用意し、その配下（子孫カテゴリ含む）の
-全商品に同じ画像を割り当てる。商品 100 点に個別画像を用意しなくても、5 枚で
-一覧が成立する（デモ用途）。
+画像ファイルがあるカテゴリ（ルート/中カテゴリどれでも可）について、その配下
+（子孫カテゴリ含む）の全商品に同じ画像を割り当てる。例えば中カテゴリ単位で
+14 枚置けば、商品 100 点に個別画像を用意しなくても一覧が成立する（デモ用途）。
 
 画像ファイルの探し方（seed_images/categories/ の中）:
-  <カテゴリコード>.png/.jpg/.jpeg/.webp   例: CAT-001.png
-  <カテゴリ名>.png/...                     例: 工具.png
+  <カテゴリコード>.png/.jpg/.jpeg/.webp   例: CAT-001-01.png
+  <カテゴリ名>.png/...                     例: 切削工具.png
 
     uv run python manage.py seed_product_images          # 画像未設定の商品にだけ設定
     uv run python manage.py seed_product_images --force  # 既に画像がある商品も上書き
@@ -46,28 +46,28 @@ class Command(BaseCommand):
         (media_root / MEDIA_SUBDIR).mkdir(parents=True, exist_ok=True)
 
         children = self._children_map()
-        roots = EcCategory.objects.filter(parent__isnull=True).order_by(
-            'sort_order', 'category_code'
-        )
+        # ルートに限らず「画像ファイルがあるカテゴリ」すべてに割り当てる。
+        # コードの浅い順（CAT-001 → CAT-001-01）に処理するので、親と子の両方に画像が
+        # あれば、より具体的な子カテゴリの画像が後勝ちで上書きする。
+        categories = EcCategory.objects.all().order_by('category_code')
 
         total = 0
-        for root in roots:
-            src = self._find_image(seed_dir, root)
+        for cat in categories:
+            src = self._find_image(seed_dir, cat)
             if src is None:
-                self.stderr.write(f'  画像なし: {root.category_code} {root.category_name}')
-                continue
+                continue  # 画像が無いカテゴリは黙ってスキップ
 
             # media にコピーして、その相対パスを商品に共有させる。
-            rel = f'{MEDIA_SUBDIR}/{root.category_code}{src.suffix.lower()}'
+            rel = f'{MEDIA_SUBDIR}/{cat.category_code}{src.suffix.lower()}'
             shutil.copy(src, media_root / rel)
 
-            qs = EcProduct.objects.filter(category_id__in=self._descendants(root.id, children))
+            qs = EcProduct.objects.filter(category_id__in=self._descendants(cat.id, children))
             if not force:
                 qs = qs.filter(Q(image='') | Q(image__isnull=True))
             n = qs.update(image=rel)
             total += n
             self.stdout.write(
-                self.style.SUCCESS(f'  {root.category_name}: {n} 商品に {src.name} を設定')
+                self.style.SUCCESS(f'  {cat.category_name}: {n} 商品に {src.name} を設定')
             )
 
         self.stdout.write(self.style.SUCCESS(f'合計 {total} 商品に画像を設定しました'))
