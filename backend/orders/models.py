@@ -51,6 +51,9 @@ class CartItem(models.Model):
         db_table = 'ec_cart_items'
         verbose_name = 'カート明細'
         verbose_name_plural = 'カート明細'
+        # 追加順で固定する。これが無いと数量更新のたびに行の並びが変わってしまう
+        # （DB は順序を保証しないため）。id 昇順 = カートに入れた順。
+        ordering = ['id']
         constraints = [
             # 同じ SKU は 1 行にまとめる（再追加は数量を増やす）。
             models.UniqueConstraint(fields=['cart', 'sku'], name='uk_cart_items_cart_sku'),

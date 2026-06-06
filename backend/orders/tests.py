@@ -130,3 +130,22 @@ class CartTests(APITestCase):
         self.client.force_authenticate(other)
         res = self.client.patch(f'/api/ec/cart/items/{item_id}/', {'quantity': 9}, format='json')
         self.assertEqual(res.status_code, 404)
+
+    def test_item_order_stable_on_quantity_change(self):
+        # 2 つ目の SKU を用意して 2 点カートに入れる
+        cat = EcCategory.objects.get(category_code='CAT-001')
+        prod2 = EcProduct.objects.create(
+            wms_id=2, product_code='PRD-2', product_name='ドリル', category=cat
+        )
+        sku2 = EcSku.objects.create(wms_id=2, product=prod2, sku_code='SKU-2')
+        EcPrice.objects.create(sku=sku2, price=Decimal('500'))
+        self.client.post('/api/ec/cart/items/', {'sku_code': 'SKU-1', 'quantity': 1}, format='json')
+        self.client.post('/api/ec/cart/items/', {'sku_code': 'SKU-2', 'quantity': 1}, format='json')
+
+        before = [i['sku_code'] for i in self.client.get('/api/ec/cart/').data['items']]
+        first_id = self.client.get('/api/ec/cart/').data['items'][0]['id']
+        self.client.patch(f'/api/ec/cart/items/{first_id}/', {'quantity': 9}, format='json')
+        after = [i['sku_code'] for i in self.client.get('/api/ec/cart/').data['items']]
+
+        # 数量を変えても並び順は変わらない（追加順で固定）
+        self.assertEqual(before, after)
