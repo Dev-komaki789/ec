@@ -107,9 +107,10 @@ class OrdersView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # 自分の注文だけ、新しい順。
+        # 自分の注文だけ、新しい順。確定前(PENDING)は履歴に出さない。
         orders = (
             Order.objects.filter(user=request.user)
+            .exclude(status=Order.Status.PENDING)
             .prefetch_related('items')
             .order_by('-created_at')
         )
@@ -149,59 +150,57 @@ class OrdersView(APIView):
 
         total_amount = sum(item.line_total for item in cart_items)
 
+        # 1) EC 側に注文を「処理中(PENDING)」で作成する。
+        #    外部 API 呼び出しを含めず、短いトランザクションで閉じる
+        #    （WMS の応答を待つ間 DB のトランザクション/コネクションを握り続けないため）。
+        with transaction.atomic():
+            order = Order.objects.create(
+                user=request.user,
+                status=Order.Status.PENDING,
+                delivery_name=delivery_name,
+                delivery_postal_code=delivery_postal_code,
+                delivery_address=delivery_address,
+                total_amount=total_amount,
+                note=overrides.get('note', ''),
+            )
+            OrderItem.objects.bulk_create(
+                [
+                    OrderItem(
+                        order=order,
+                        sku=item.sku,
+                        sku_code=item.sku.sku_code,
+                        product_name=item.sku.product.product_name,
+                        size_info=item.sku.size_info,
+                        color_info=item.sku.color_info,
+                        unit_price=item.unit_price_incl_tax,
+                        quantity=item.quantity,
+                    )
+                    for item in cart_items
+                ]
+            )
+
+        # 2) WMS に出荷指示を作成する（DB トランザクションは握っていない）。
         try:
-            with transaction.atomic():
-                # 1) EC 側に注文を作成（価格を OrderItem に焼き付ける）
-                order = Order.objects.create(
-                    user=request.user,
-                    delivery_name=delivery_name,
-                    delivery_postal_code=delivery_postal_code,
-                    delivery_address=delivery_address,
-                    total_amount=total_amount,
-                    note=overrides.get('note', ''),
-                )
-                OrderItem.objects.bulk_create(
-                    [
-                        OrderItem(
-                            order=order,
-                            sku=item.sku,
-                            sku_code=item.sku.sku_code,
-                            product_name=item.sku.product.product_name,
-                            size_info=item.sku.size_info,
-                            color_info=item.sku.color_info,
-                            unit_price=item.unit_price_incl_tax,
-                            quantity=item.quantity,
-                        )
-                        for item in cart_items
-                    ]
-                )
-
-                # 2) WMS に出荷指示を作成。在庫不足(409)なら例外 → atomic がロールバック。
-                wms_result = create_outbound_order(
-                    external_order_id=order.order_number,
-                    delivery_name=delivery_name,
-                    delivery_address=delivery_address,
-                    delivery_postal_code=delivery_postal_code,
-                    items=[
-                        {'sku_code': i.sku.sku_code, 'quantity': i.quantity} for i in cart_items
-                    ],
-                    note=overrides.get('note', ''),
-                )
-
-                # 3) 出荷指示番号を保存
-                order.wms_outbound_order_code = wms_result.get('outbound_order_code', '')
-                order.wms_status = wms_result.get('status', '')
-                order.save(update_fields=['wms_outbound_order_code', 'wms_status'])
-
-                # 4) カートを空にする
-                cart.items.all().delete()
+            wms_result = create_outbound_order(
+                external_order_id=order.order_number,
+                delivery_name=delivery_name,
+                delivery_address=delivery_address,
+                delivery_postal_code=delivery_postal_code,
+                items=[{'sku_code': i.sku.sku_code, 'quantity': i.quantity} for i in cart_items],
+                note=overrides.get('note', ''),
+            )
         except StockShortage as e:
-            # WMS 側もロールバック済み。EC 注文も作られていない（atomic）。
+            # 在庫不足。WMS 側はロールバック済み。EC 側の処理中注文も取り消す。
+            order.delete()
             return Response(
                 {'error': 'stock_shortage', 'message': e.message, 'details': e.details},
                 status=status.HTTP_409_CONFLICT,
             )
         except WmsUnavailable:
+            # WMS 接続不可。処理中注文を取り消して再試行してもらう。
+            # （注: タイムアウトで WMS 側だけ作成成功している可能性は残る。厳密には
+            #   外部注文IDによる冪等化や照合バッチが必要だが、MVP では割り切る。）
+            order.delete()
             return Response(
                 {
                     'error': 'wms_unavailable',
@@ -209,6 +208,14 @@ class OrdersView(APIView):
                 },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+
+        # 3) 成功: 確定にして出荷指示番号を保存し、カートを空にする（短いトランザクション）。
+        with transaction.atomic():
+            order.status = Order.Status.CONFIRMED
+            order.wms_outbound_order_code = wms_result.get('outbound_order_code', '')
+            order.wms_status = wms_result.get('status', '')
+            order.save(update_fields=['status', 'wms_outbound_order_code', 'wms_status'])
+            cart.items.all().delete()
 
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 

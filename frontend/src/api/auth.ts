@@ -47,3 +47,14 @@ export async function login(email: string, password: string): Promise<void> {
 export async function fetchMe(): Promise<Me> {
   return apiFetch<Me>('/auth/me/')
 }
+
+export interface ProfileUpdate {
+  full_name?: string
+  postal_code?: string
+  address?: string
+  phone_number?: string
+}
+
+export async function updateMe(payload: ProfileUpdate): Promise<Me> {
+  return apiFetch<Me>('/auth/me/', { method: 'PATCH', body: JSON.stringify(payload) })
+}

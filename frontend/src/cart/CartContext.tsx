@@ -6,12 +6,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { addToCart, getCart, removeCartItem, updateCartItem, type Cart } from '../api/cart'
 import { useAuth } from '../auth/AuthContext'
+import { useToast } from '../components/Toast'
 
 interface CartContextValue {
   cart: Cart | null
-  add: (skuCode: string, quantity?: number) => Promise<void>
-  update: (id: number, quantity: number) => Promise<void>
-  remove: (id: number) => Promise<void>
+  // 操作系は成功したかを boolean で返す（失敗時はトーストでも通知する）。
+  add: (skuCode: string, quantity?: number) => Promise<boolean>
+  update: (id: number, quantity: number) => Promise<boolean>
+  remove: (id: number) => Promise<boolean>
   refresh: () => Promise<void>
 }
 
@@ -19,6 +21,7 @@ const CartContext = createContext<CartContextValue | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
+  const { notify } = useToast()
   const [cart, setCart] = useState<Cart | null>(null)
 
   // ログイン状態が変わったらカートを読み直す（ログアウトで空に）。
@@ -42,9 +45,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
-  const add = async (skuCode: string, quantity = 1) => setCart(await addToCart(skuCode, quantity))
-  const update = async (id: number, quantity: number) => setCart(await updateCartItem(id, quantity))
-  const remove = async (id: number) => setCart(await removeCartItem(id))
+  // 操作が失敗してもアプリが落ちないよう、各操作で例外を捕まえてトースト通知する。
+  async function run(action: () => Promise<Cart>, failMessage: string): Promise<boolean> {
+    try {
+      setCart(await action())
+      return true
+    } catch {
+      notify(failMessage, 'error')
+      return false
+    }
+  }
+
+  const add = (skuCode: string, quantity = 1) =>
+    run(() => addToCart(skuCode, quantity), 'カートに追加できませんでした')
+  const update = (id: number, quantity: number) =>
+    run(() => updateCartItem(id, quantity), '数量を変更できませんでした')
+  const remove = (id: number) => run(() => removeCartItem(id), '削除できませんでした')
   const refresh = async () => setCart(await getCart())
 
   return (

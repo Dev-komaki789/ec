@@ -43,7 +43,10 @@ export function Header() {
               <NavLink to="/orders" className={navClass}>
                 注文履歴
               </NavLink>
-              <span className="hidden text-slate-500 sm:inline">{user.full_name} さん</span>
+              <NavLink to="/profile" className={navClass}>
+                <span className="hidden sm:inline">{user.full_name} さん</span>
+                <span className="sm:hidden">プロフィール</span>
+              </NavLink>
               <button
                 type="button"
                 onClick={logout}

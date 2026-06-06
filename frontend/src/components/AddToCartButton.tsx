@@ -29,9 +29,12 @@ export function AddToCartButton({
     }
     setAdding(true)
     try {
-      await add(skuCode, quantity)
-      setAdded(true)
-      window.setTimeout(() => setAdded(false), 1500)
+      const ok = await add(skuCode, quantity)
+      if (ok) {
+        // 成功時だけ「追加しました」を出す（失敗時は CartContext がトースト通知）。
+        setAdded(true)
+        window.setTimeout(() => setAdded(false), 1500)
+      }
     } finally {
       setAdding(false)
     }

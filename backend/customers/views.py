@@ -29,10 +29,21 @@ class RegisterView(APIView):
 
 
 class MeView(APIView):
-    """GET /api/ec/auth/me/  ログイン中の顧客情報（要 JWT）。"""
+    """ログイン中の顧客情報（要 JWT）。
+
+    GET   /api/ec/auth/me/   取得
+    PATCH /api/ec/auth/me/   更新（氏名・郵便番号・住所・電話番号）
+    """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         profile = request.user.customer_profile
         return Response(MeSerializer(profile).data)
+
+    def patch(self, request):
+        profile = request.user.customer_profile
+        serializer = MeSerializer(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

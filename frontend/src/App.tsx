@@ -10,6 +10,7 @@ import { OrderDetailPage } from './pages/OrderDetailPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ProductsPage } from './pages/ProductsPage'
+import { ProfilePage } from './pages/ProfilePage'
 
 function App() {
   const { loading } = useAuth()
@@ -40,6 +41,14 @@ function App() {
             element={
               <RequireAuth>
                 <CheckoutPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth>
+                <ProfilePage />
               </RequireAuth>
             }
           />

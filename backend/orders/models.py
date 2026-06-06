@@ -83,6 +83,9 @@ class Order(models.Model):
     """
 
     class Status(models.TextChoices):
+        # PENDING: EC に作成済みだが WMS への出荷指示がまだ（処理中）。
+        # CONFIRMED: WMS への出荷指示まで成功して確定。
+        PENDING = 'pending', '処理中'
         CONFIRMED = 'confirmed', '注文確定'
 
     user = models.ForeignKey(
