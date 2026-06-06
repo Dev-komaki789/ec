@@ -26,9 +26,12 @@ export function CheckoutPage() {
     setError(null)
     try {
       const order = await createOrder({ note })
-      await refresh() // サーバ側でカートが空になったので取り直す
-      // 注文完了として詳細ページへ（justOrdered で「ありがとう」バナーを出す）
+      // 先に完了ページへ遷移する（justOrdered で「ありがとう」表示）。
+      // 順序が逆だと、refresh でカートが空になった瞬間にこのページの
+      // 「空カートなら /cart へ」ガードが先に発火し、完了ページに行けない。
       navigate(`/orders/${order.id}`, { state: { justOrdered: true } })
+      // 遷移後にカート(ヘッダーのバッジ)を更新する。await しない。
+      void refresh()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : '注文に失敗しました')
     } finally {
