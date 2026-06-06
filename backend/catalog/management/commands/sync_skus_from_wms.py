@@ -34,6 +34,13 @@ class Command(BaseCommand):
             default=None,
             help='この日時以降に更新されたものだけ取得（ISO8601）。WMS 未対応の間は無視される。',
         )
+        parser.add_argument(
+            '--reset',
+            action='store_true',
+            help='コピー(カテゴリ/商品/SKU)を全削除してから取り込む。'
+            'WMS のデモデータ再生成などで主キー(id)が変わり、wms_id 基準の UPSERT が'
+            '衝突する場合に使う。',
+        )
 
     def handle(self, *args, **options):
         params = {}
@@ -41,6 +48,8 @@ class Command(BaseCommand):
             params['updated_since'] = options['since']
 
         with transaction.atomic():
+            if options['reset']:
+                self._reset()
             n_cat = self._sync_categories(params)
             n_prod = self._sync_products(params)
             n_sku = self._sync_skus(params)
@@ -48,6 +57,24 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f'同期完了: カテゴリ {n_cat} 件 / 商品 {n_prod} 件 / SKU {n_sku} 件')
         )
+
+    def _reset(self):
+        """コピーテーブルを子→親の順に全削除する。
+
+        EcSku は CartItem から PROTECT されているので、先にカート明細を消す。
+        注文明細(OrderItem.sku)は SET_NULL なので注文自体は残る（金額・商品名は
+        OrderItem に焼き付け済み）。EcPrice は EcSku の CASCADE で一緒に消える。
+        """
+        # 遅延 import（catalog から orders への依存をこのコマンド内に閉じる）
+        from orders.models import CartItem
+
+        CartItem.objects.all().delete()
+        EcSku.objects.all().delete()
+        EcProduct.objects.all().delete()
+        # EcCategory.parent は自己参照の PROTECT なので、先に親リンクを外してから消す。
+        EcCategory.objects.update(parent=None)
+        EcCategory.objects.all().delete()
+        self.stdout.write('  コピーを全削除しました（--reset）')
 
     def _sync_categories(self, params):
         """カテゴリを UPSERT。parent は自己参照なので 2 パスで解決する。
