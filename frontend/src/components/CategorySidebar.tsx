@@ -56,7 +56,7 @@ function CategoryNode({ node, depth, active }: { node: Node; depth: number; acti
   )
 }
 
-export function CategorySidebar() {
+export function CategorySidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [cats, setCats] = useState<Category[]>([])
   const [searchParams] = useSearchParams()
   const active = searchParams.get('category') ?? ''
@@ -76,7 +76,9 @@ export function CategorySidebar() {
   const tree = buildTree(cats)
 
   return (
-    <nav className="text-sm">
+    // カテゴリのリンクをクリックしたら（モバイルのドロワーを）閉じる。
+    // どのリンクを押してもバブリングでここに届くので onClick 一箇所でまとめて扱う。
+    <nav className="text-sm" onClick={() => onNavigate?.()}>
       <h2 className="mb-2 px-2 text-xs font-bold tracking-wide text-slate-400 uppercase">カテゴリ</h2>
       <ul className="space-y-0.5">
         <li>

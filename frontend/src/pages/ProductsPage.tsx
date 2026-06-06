@@ -1,13 +1,16 @@
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CategorySidebar } from '../components/CategorySidebar'
 import { ProductGrid } from '../components/ProductGrid'
-import { btnPrimary } from '../components/ui'
+import { btnOutline, btnPrimary } from '../components/ui'
 
 export function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const category = searchParams.get('category') ?? ''
   const search = searchParams.get('search') ?? ''
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
+  // モバイルでカテゴリ一覧を開いているか（PC では常に表示するので無関係）
+  const [catOpen, setCatOpen] = useState(false)
 
   function submitSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -28,12 +31,26 @@ export function ProductsPage() {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[200px_1fr]">
-      <aside className="lg:sticky lg:top-20 lg:self-start">
-        <CategorySidebar />
-      </aside>
+    <div>
+      {/* モバイル専用: カテゴリの開閉ボタン（PC では非表示） */}
+      <button
+        type="button"
+        className={`${btnOutline} mb-4 w-full lg:hidden`}
+        onClick={() => setCatOpen((v) => !v)}
+        aria-expanded={catOpen}
+      >
+        カテゴリで絞り込む {catOpen ? '▲' : '▼'}
+      </button>
 
-      <div>
+      <div className="grid gap-8 lg:grid-cols-[200px_1fr]">
+        {/* モバイルでは catOpen のときだけ表示。PC(lg) では常に表示。 */}
+        <aside
+          className={`${catOpen ? 'block' : 'hidden'} lg:block lg:sticky lg:top-20 lg:self-start`}
+        >
+          <CategorySidebar onNavigate={() => setCatOpen(false)} />
+        </aside>
+
+        <div>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-bold text-slate-900">商品一覧</h1>
           {/* key={search} で、カテゴリ変更などで URL の search が消えたら入力欄もリセットする */}
@@ -52,7 +69,8 @@ export function ProductsPage() {
           </form>
         </div>
 
-        <ProductGrid category={category} search={search} page={page} onPageChange={changePage} />
+          <ProductGrid category={category} search={search} page={page} onPageChange={changePage} />
+        </div>
       </div>
     </div>
   )
