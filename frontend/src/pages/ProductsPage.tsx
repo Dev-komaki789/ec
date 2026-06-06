@@ -7,6 +7,7 @@ export function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const category = searchParams.get('category') ?? ''
   const search = searchParams.get('search') ?? ''
+  const page = Math.max(1, Number(searchParams.get('page')) || 1)
 
   function submitSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -14,7 +15,16 @@ export function ProductsPage() {
     const next = new URLSearchParams(searchParams)
     if (term) next.set('search', term)
     else next.delete('search')
+    next.delete('page') // 検索条件が変わったら 1 ページ目に戻す
     setSearchParams(next)
+  }
+
+  function changePage(p: number) {
+    const next = new URLSearchParams(searchParams)
+    if (p > 1) next.set('page', String(p))
+    else next.delete('page')
+    setSearchParams(next)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
@@ -42,7 +52,7 @@ export function ProductsPage() {
           </form>
         </div>
 
-        <ProductGrid category={category} search={search} />
+        <ProductGrid category={category} search={search} page={page} onPageChange={changePage} />
       </div>
     </div>
   )

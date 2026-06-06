@@ -7,12 +7,23 @@ ReadOnlyModelViewSet なので一覧（GET /api/ec/products/）と
 
 from rest_framework import status, viewsets
 from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import EcCategory, EcProduct, EcSku
 from .serializers import EcCategorySerializer, EcProductSerializer
 from .wms_client import StockNotFound, WmsUnavailable, get_stock
+
+
+class ProductPagination(PageNumberPagination):
+    """商品一覧用のページング。1 ページ 12 件（グリッドが 2/3/4 列で割り切れる数）。
+
+    フロント側のページ数計算もこの 12 を前提にしているので、変える場合は
+    frontend/src/api/catalog.ts の PRODUCT_PAGE_SIZE も合わせる。
+    """
+
+    page_size = 12
 
 
 class CategoryListView(ListAPIView):
@@ -35,6 +46,7 @@ class EcProductViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     serializer_class = EcProductSerializer
+    pagination_class = ProductPagination
 
     def get_queryset(self):
         # JOIN を 1 度にまとめて N+1 を避ける:

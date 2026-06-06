@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchProducts } from '../api/catalog'
 import type { Product } from '../api/types'
+import { Pagination } from './Pagination'
 import { ProductCard } from './ProductCard'
 
 function GridSkeleton() {
@@ -13,7 +14,17 @@ function GridSkeleton() {
   )
 }
 
-export function ProductGrid({ category, search }: { category: string; search: string }) {
+export function ProductGrid({
+  category,
+  search,
+  page,
+  onPageChange,
+}: {
+  category: string
+  search: string
+  page: number
+  onPageChange: (page: number) => void
+}) {
   const [products, setProducts] = useState<Product[]>([])
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -25,7 +36,7 @@ export function ProductGrid({ category, search }: { category: string; search: st
       setLoading(true)
       setError(null)
       try {
-        const data = await fetchProducts({ category, search })
+        const data = await fetchProducts({ category, search, page })
         if (cancelled) return
         setProducts(data.results)
         setCount(data.count)
@@ -39,7 +50,7 @@ export function ProductGrid({ category, search }: { category: string; search: st
     return () => {
       cancelled = true
     }
-  }, [category, search])
+  }, [category, search, page])
 
   if (loading) return <GridSkeleton />
   if (error) return <p className="text-rose-600">{error}</p>
@@ -52,11 +63,14 @@ export function ProductGrid({ category, search }: { category: string; search: st
           該当する商品がありません。
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+          <Pagination count={count} page={page} onChange={onPageChange} />
+        </>
       )}
     </>
   )
