@@ -3,7 +3,33 @@
 WMS（[komaki-wms](https://github.com/Dev-komaki789/wms)）と連携する EC サイト。
 業務系（PC + ハンディ）の WMS に対して、顧客向け SPA を **マイクロサービス的に分離** して構築する。
 
-**開発状況**: 設計確定（2026-06-03）、実装はこれから。
+**公開サイト**: <https://ec.komaki-wms.com>（デモ・決済はモック）
+
+---
+
+## スクリーンショット
+
+### 商品一覧
+
+PC とスマホでレイアウトを最適化（スマホはカテゴリ横スクロール＋下部にボトムナビ）。
+
+| PC | スマホ |
+| --- | --- |
+| ![商品一覧（PC）](docs/images/products-pc.png) | ![商品一覧（スマホ）](docs/images/products-mobile.png) |
+
+### カート〜注文
+
+| カート | 注文手続き |
+| --- | --- |
+| ![カート](docs/images/cart.png) | ![注文手続き](docs/images/checkout.png) |
+
+| 注文完了 | 注文履歴 |
+| --- | --- |
+| ![注文完了](docs/images/order-complete.png) | ![注文履歴](docs/images/order-history.png) |
+
+### ログイン / 新規登録
+
+![ログイン・新規登録](docs/images/login.png)
 
 ---
 
