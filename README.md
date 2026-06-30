@@ -1,7 +1,7 @@
 # EC サイト（WMS 連携）
 
-WMS（[komaki-wms](https://github.com/Dev-komaki789/wms)）と連携する EC サイト。
-業務系（PC + ハンディ）の WMS に対して、顧客向け SPA を **マイクロサービス的に分離** して構築する。
+オリジナルWMS（[komaki-wms](https://github.com/Dev-komaki789/wms)）とAPI連携する EC サイト。
+ECサイトで注文が確定されると自動的にWMSから対象商品の在庫が引き当てされる仕組みになっています。
 
 **公開サイト**: <https://ec.komaki-wms.com>（デモ・決済はモック）
 
@@ -83,7 +83,6 @@ ec/
 ## 関連リポジトリ
 
 - **WMS（連携先・API 提供者）**: <https://github.com/Dev-komaki789/wms>
-  - 本 EC サイトは WMS が提供する HTTP API を消費する
 
 ## 主要な設計判断（要約）
 
@@ -97,8 +96,6 @@ ec/
 | 認証 | サービス間は API キー、顧客は JWT or Session |
 | Customer マスタ | EC 顧客は WMS に同期しない（個人情報リスク回避） |
 | 商品画像 | EC 側に保持、本番は AWS S3 |
-
-詳細は WMS リポジトリの `integration/HANDOVER_EC.md` を参照。
 
 ## スコープ（最小 MVP 8 機能）
 
